@@ -1,7 +1,7 @@
 # ROS_KINECT_PROCESS
 
 <p align="center">
-  <img src="docs/img/pipeline_general.png" width="950">
+  <img src="docs/img/RGBD-PointCloud-Pipeline.png" width="950">
 </p>
 
 <p align="center">
@@ -162,7 +162,7 @@ Open3D Post-Processing
 ## General Pipeline
 
 <p align="center">
-  <img src="docs/img/pipeline_general.png" width="950">
+  <img src="docs/img/system_architecture.png" width="950">
 </p>
 
 ---
