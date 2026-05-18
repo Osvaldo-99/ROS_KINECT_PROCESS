@@ -1,0 +1,66 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+.venv/
+venv/
+env/
+
+# ROS / Catkin
+build/
+devel/
+install/
+log/
+.catkin_workspace
+
+# RTAB-Map
+*.db
+*.db-shm
+*.db-wal
+
+# ROS Bags
+*.bag
+*.bag.active
+
+# Nubes de puntos y modelos 3D pesados
+*.ply
+*.pcd
+*.las
+*.laz
+*.dae
+*.obj
+*.stl
+
+# Videos
+*.mp4
+*.avi
+*.mkv
+*.mov
+
+# Temporales
+*.tmp
+*.bak
+*.swp
+*.log
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# LaTeX
+*.aux
+*.bbl
+*.blg
+*.out
+*.toc
+*.synctex.gz
+
+# Mantener imágenes de documentación
+!docs/img/*.png
+!docs/img/*.jpg
+!docs/img/*.jpeg
+
+# Mantener estructura de carpetas
+!.gitkeep
