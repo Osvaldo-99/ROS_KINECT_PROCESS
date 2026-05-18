@@ -2,33 +2,33 @@
 # -*- coding: utf-8 -*-
 
 """
-procesar_nube_3d.py
+process_point_cloud.py
 
-Procesamiento reproducible de nubes de puntos PLY.
+Reproducible PLY point cloud processing pipeline.
 
-Este script permite:
-1. Leer una nube de puntos .PLY.
-2. Reducir la nube mediante voxelización iterativa con Open3D.
-3. Exportar la nube reducida a .PLY.
-4. Exportar la nube reducida a .DAE mediante cubos.
-5. Exportar los puntos reducidos a .CSV.
-6. Generar una esfera representativa del robot en .DAE.
-7. Segmentar piso y paredes mediante RANSAC.
-8. Exportar piso y paredes a .DAE.
-9. Calcular y exportar el contorno del piso mediante Convex Hull.
-10. Guardar un resumen experimental en .CSV y .JSON.
+This script provides:
+1. Loading of .PLY point clouds.
+2. Point cloud reduction using iterative voxelization with Open3D.
+3. Exportation of reduced point clouds to .PLY.
+4. Exportation of reduced point clouds to .DAE using cube-based representation.
+5. Exportation of reduced points to .CSV format.
+6. Generation of a representative robot sphere in .DAE format.
+7. Floor and wall segmentation using RANSAC.
+8. Exportation of segmented floor and walls to .DAE.
+9. Convex Hull computation and exportation for floor contours.
+10. Experimental summary exportation in .CSV and .JSON formats.
 
-Ejemplo de uso:
+Example usage:
 
-python3 src/procesar_nube_3d.py \
-    --input "/home/osvaldo07/Imágenes/Prueba_26_de_abril.ply" \
-    --output-dir "data/output/prueba_26" \
-    --prefix "Prueba_26" \
-    --objetivo-puntos 100000 \
-    --tolerancia 10000 \
-    --voxel-inicial 0.015 \
-    --voxel-maximo 0.05 \
-    --paso 0.001
+python3 src/process_point_cloud.py \
+    --input "/home/osvaldo07/Data/original_cloud.ply" \
+    --output-dir "data/output/experiment_26" \
+    --prefix "Experiment_26" \
+    --target-points 100000 \
+    --tolerance 10000 \
+    --voxel-start 0.015 \
+    --voxel-max 0.05 \
+    --voxel-step 0.001
 """
 
 import argparse
@@ -49,32 +49,32 @@ from scipy.spatial import QhullError
 
 
 # ============================================================
-# FUNCIONES DE TIEMPO
+# TIME UTILITIES
 # ============================================================
 
-def formato_tiempo(segundos):
+def format_time(seconds):
     """
-    Convierte segundos a formato legible en minutos y segundos.
+    Converts seconds into a readable minutes-and-seconds format.
     """
-    minutos = int(segundos // 60)
-    seg = segundos % 60
-    return f"{minutos} min {seg:.2f} s"
+    minutes = int(seconds // 60)
+    sec = seconds % 60
+    return f"{minutes} min {sec:.2f} s"
 
 
 # ============================================================
-# FUNCIONES GEOMÉTRICAS
+# GEOMETRIC UTILITIES
 # ============================================================
 
 def plane_from_points(p1, p2, p3):
     """
-    Calcula el plano que pasa por tres puntos.
+    Computes the plane passing through three points.
 
-    Ecuación del plano:
+    Plane equation:
         n . x + d = 0
 
-    Regresa:
-        n: vector normal unitario
-        d: término independiente del plano
+    Returns:
+        n: unit normal vector
+        d: plane offset term
     """
     v1 = p2 - p1
     v2 = p3 - p1
@@ -93,14 +93,14 @@ def plane_from_points(p1, p2, p3):
 
 def point_plane_dist(points, n, d):
     """
-    Calcula la distancia algebraica de un conjunto de puntos a un plano.
+    Computes the algebraic distance from a set of points to a plane.
     """
     return points.dot(n) + d
 
 
 def angle_deg(u, v):
     """
-    Calcula el ángulo en grados entre dos vectores.
+    Computes the angle in degrees between two vectors.
     """
     u = u / (norm(u) + 1e-12)
     v = v / (norm(v) + 1e-12)
@@ -110,127 +110,127 @@ def angle_deg(u, v):
 
 
 # ============================================================
-# REDUCCIÓN DE NUBE CON OPEN3D
+# POINT CLOUD REDUCTION WITH OPEN3D
 # ============================================================
 
-def reduce_point_cloud_open3d(
+def iterative_voxel_downsampling(
     input_ply_path,
     output_ply_path,
-    objetivo_puntos=100000,
-    tolerancia=10000,
-    voxel_inicial=0.015,
-    voxel_maximo=0.05,
-    paso=0.001
+    target_points=100000,
+    tolerance=10000,
+    voxel_start=0.015,
+    voxel_max=0.05,
+    voxel_step=0.001
 ):
     """
-    Reduce una nube de puntos usando voxel_down_sample de Open3D.
+    Reduces a point cloud using Open3D voxel_down_sample.
 
-    El proceso prueba diferentes tamaños de voxel hasta aproximarse
-    al número objetivo de puntos.
+    The process tests different voxel sizes until it approximates
+    the target number of points.
 
-    Regresa:
-        points: arreglo NumPy con los puntos reducidos
-        metricas: diccionario con métricas de reducción
+    Returns:
+        points: NumPy array containing the reduced points
+        metrics: dictionary containing reduction metrics
     """
 
     input_ply_path = Path(input_ply_path)
     output_ply_path = Path(output_ply_path)
 
     if not input_ply_path.exists():
-        raise FileNotFoundError(f"Archivo no encontrado: {input_ply_path}")
+        raise FileNotFoundError(f"File not found: {input_ply_path}")
 
     if input_ply_path.suffix.lower() != ".ply":
-        raise ValueError("El archivo de entrada debe tener extensión .ply")
+        raise ValueError("The input file must have a .ply extension")
 
-    print("Leyendo nube original con Open3D...")
-    nube = o3d.io.read_point_cloud(str(input_ply_path))
+    print("Loading original point cloud with Open3D...")
+    cloud = o3d.io.read_point_cloud(str(input_ply_path))
 
-    puntos_originales = len(nube.points)
+    original_points = len(cloud.points)
 
-    if puntos_originales == 0:
-        raise ValueError("La nube de puntos está vacía.")
+    if original_points == 0:
+        raise ValueError("The point cloud is empty.")
 
-    print(f"🔢 Puntos originales: {puntos_originales}")
+    print(f"🔢 Original points: {original_points}")
 
-    voxel_actual = voxel_inicial
-    mejor_nube = None
-    mejor_error = float("inf")
-    mejor_voxel = voxel_inicial
-    mejor_total_puntos = 0
+    current_voxel = voxel_start
+    best_cloud = None
+    best_error = float("inf")
+    best_voxel = voxel_start
+    best_total_points = 0
 
-    historial_voxeles = []
+    voxel_history = []
 
-    while voxel_actual <= voxel_maximo + 1e-12:
-        nube_filtrada = nube.voxel_down_sample(voxel_size=voxel_actual)
-        total_puntos = len(nube_filtrada.points)
-        error = abs(total_puntos - objetivo_puntos)
+    while current_voxel <= voxel_max + 1e-12:
+        filtered_cloud = cloud.voxel_down_sample(voxel_size=current_voxel)
+        total_points = len(filtered_cloud.points)
+        error = abs(total_points - target_points)
 
-        historial_voxeles.append({
-            "voxel": round(voxel_actual, 6),
-            "puntos": int(total_puntos),
+        voxel_history.append({
+            "voxel": round(current_voxel, 6),
+            "points": int(total_points),
             "error": int(error)
         })
 
-        print(f"🔍 Probar voxel={voxel_actual:.3f} → {total_puntos} puntos")
+        print(f"🔍 Testing voxel={current_voxel:.3f} → {total_points} points")
 
-        if error < mejor_error:
-            mejor_error = error
-            mejor_nube = nube_filtrada
-            mejor_voxel = voxel_actual
-            mejor_total_puntos = total_puntos
+        if error < best_error:
+            best_error = error
+            best_cloud = filtered_cloud
+            best_voxel = current_voxel
+            best_total_points = total_points
 
-        if error <= tolerancia:
-            print("🎯 Tolerancia alcanzada. Deteniendo iteración.")
+        if error <= tolerance:
+            print("🎯 Tolerance reached. Stopping iteration.")
             break
 
-        voxel_actual += paso
+        current_voxel += voxel_step
 
-    if mejor_nube is None:
-        raise RuntimeError("No se pudo reducir la nube de puntos.")
+    if best_cloud is None:
+        raise RuntimeError("Unable to reduce the point cloud.")
 
     output_ply_path.parent.mkdir(parents=True, exist_ok=True)
-    o3d.io.write_point_cloud(str(output_ply_path), mejor_nube)
+    o3d.io.write_point_cloud(str(output_ply_path), best_cloud)
 
-    puntos_finales = len(mejor_nube.points)
-    reduccion = 100 * (1 - puntos_finales / puntos_originales)
+    final_points = len(best_cloud.points)
+    reduction = 100 * (1 - final_points / original_points)
 
-    print(f"\n✅ Nube reducida guardada como: {output_ply_path}")
-    print(f"📦 Voxel óptimo: {mejor_voxel:.3f}")
-    print(f"📉 Puntos finales: {puntos_finales}")
-    print(f"📊 Reducción: {reduccion:.2f}%")
+    print(f"\n✅ Reduced point cloud saved as: {output_ply_path}")
+    print(f"📦 Optimal voxel: {best_voxel:.3f}")
+    print(f"📉 Final points: {final_points}")
+    print(f"📊 Reduction: {reduction:.2f}%")
 
-    points = np.asarray(mejor_nube.points)
+    points = np.asarray(best_cloud.points)
 
-    metricas = {
-        "puntos_originales": int(puntos_originales),
-        "puntos_finales": int(puntos_finales),
-        "objetivo_puntos": int(objetivo_puntos),
-        "tolerancia": int(tolerancia),
-        "voxel_optimo": float(mejor_voxel),
-        "voxel_inicial": float(voxel_inicial),
-        "voxel_maximo": float(voxel_maximo),
-        "paso": float(paso),
-        "reduccion_porcentaje": float(reduccion),
-        "mejor_error": int(mejor_error),
-        "mejor_total_puntos": int(mejor_total_puntos),
-        "historial_voxeles": historial_voxeles
+    metrics = {
+        "original_points": int(original_points),
+        "final_points": int(final_points),
+        "target_points": int(target_points),
+        "tolerance": int(tolerance),
+        "optimal_voxel": float(best_voxel),
+        "voxel_start": float(voxel_start),
+        "voxel_max": float(voxel_max),
+        "voxel_step": float(voxel_step),
+        "reduction_percentage": float(reduction),
+        "best_error": int(best_error),
+        "best_total_points": int(best_total_points),
+        "voxel_history": voxel_history
     }
 
-    return points, metricas
+    return points, metrics
 
 
 # ============================================================
-# RANSAC DE PLANO
+# PLANE RANSAC
 # ============================================================
 
-def ransac_plane(points, distance_threshold=0.02, max_iterations=2000, random_state=0):
+def fit_plane_ransac(points, distance_threshold=0.02, max_iterations=2000, random_state=0):
     """
-    Ajusta un plano mediante RANSAC.
+    Fits a plane using RANSAC.
 
-    Regresa:
-        n_refined: normal refinada del plano
-        d_refined: término d refinado del plano
-        inliers: máscara booleana de puntos pertenecientes al plano
+    Returns:
+        n_refined: refined plane normal
+        d_refined: refined plane offset term
+        inliers: boolean mask for plane inlier points
     """
     rng = np.random.default_rng(random_state)
 
@@ -292,7 +292,7 @@ def ransac_plane(points, distance_threshold=0.02, max_iterations=2000, random_st
 
 
 # ============================================================
-# SEGMENTACIÓN DE PISO Y PAREDES
+# FLOOR AND WALL SEGMENTATION
 # ============================================================
 
 def segment_floor_and_walls(
@@ -307,11 +307,11 @@ def segment_floor_and_walls(
     random_state=42
 ):
     """
-    Segmenta piso y paredes a partir de la nube reducida.
+    Segments floor and walls from the reduced point cloud.
 
-    Criterio:
-    - Piso: plano cuya normal es aproximadamente paralela al eje Z.
-    - Paredes: planos cuya normal forma aproximadamente 90 grados con el eje Z.
+    Criterion:
+    - Floor: plane whose normal is approximately parallel to the Z axis.
+    - Walls: planes whose normal forms approximately 90 degrees with the Z axis.
     """
 
     result = {
@@ -322,7 +322,7 @@ def segment_floor_and_walls(
         "remaining_points": points.copy()
     }
 
-    n, d, inliers = ransac_plane(
+    n, d, inliers = fit_plane_ransac(
         points,
         distance_threshold=distance_threshold,
         max_iterations=max_iterations,
@@ -349,7 +349,7 @@ def segment_floor_and_walls(
         if current.shape[0] < min_inliers_plane:
             break
 
-        n, d, inliers = ransac_plane(
+        n, d, inliers = fit_plane_ransac(
             current,
             distance_threshold=distance_threshold,
             max_iterations=max_iterations,
@@ -383,12 +383,12 @@ def segment_floor_and_walls(
 
 
 # ============================================================
-# CONVEX HULL DEL PISO
+# FLOOR CONVEX HULL
 # ============================================================
 
 def convex_hull_on_plane(points_on_plane, plane_normal):
     """
-    Calcula el Convex Hull 2D de puntos proyectados sobre el plano del piso.
+    Computes the 2D Convex Hull of points projected onto the floor plane.
     """
     if points_on_plane.shape[0] < 3:
         return None, None, None
@@ -418,7 +418,7 @@ def convex_hull_on_plane(points_on_plane, plane_normal):
 
 def hull2d_vertices_3d(hull2d, basis):
     """
-    Convierte los vértices del Convex Hull 2D de regreso a coordenadas 3D.
+    Converts 2D Convex Hull vertices back to 3D coordinates.
     """
     u, v, c = basis
 
@@ -433,16 +433,16 @@ def hull2d_vertices_3d(hull2d, basis):
 
 
 # ============================================================
-# EXPORTACIÓN A DAE Y CSV
+# DAE AND CSV EXPORTATION
 # ============================================================
 
-def points_to_collada(points, cube_size, output_collada_path, scal, color):
+def export_points_to_collada(points, cube_size, output_collada_path, scal, color):
     """
-    Exporta puntos como una colección de cubos en formato DAE.
+    Exports points as a collection of cubes in DAE format.
 
-    Nota:
-    Este método puede ser pesado si la nube tiene demasiados puntos.
-    Para visualización ligera, conviene usar nubes previamente reducidas.
+    Note:
+    This method can be computationally expensive if the cloud contains too many points.
+    For lightweight visualization, use previously reduced point clouds.
     """
     output_collada_path = Path(output_collada_path)
     output_collada_path.parent.mkdir(parents=True, exist_ok=True)
@@ -473,9 +473,9 @@ def points_to_collada(points, cube_size, output_collada_path, scal, color):
     combined.export(str(output_collada_path), file_type="dae")
 
 
-def save_points_to_csv(points, output_csv_path, scal):
+def export_points_to_csv(points, output_csv_path, scal):
     """
-    Guarda los puntos en un archivo CSV con columnas x, y, z.
+    Guarda los points en un archivo CSV con columnas x, y, z.
     """
     output_csv_path = Path(output_csv_path)
     output_csv_path.parent.mkdir(parents=True, exist_ok=True)
@@ -493,7 +493,7 @@ def export_floor_hull_wire(
     color=[0.0, 0.8, 1.0, 1.0]
 ):
     """
-    Exporta el contorno del piso como una estructura tipo alambre en DAE.
+    Exports the floor contour as a wire-like DAE structure.
     """
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -563,153 +563,153 @@ def export_floor_hull_wire(
 
 
 # ============================================================
-# ARGUMENTOS DE TERMINAL
+# COMMAND-LINE ARGUMENTS
 # ============================================================
 
 def parse_args():
     """
-    Define los argumentos necesarios para ejecutar el script
-    sin modificar manualmente rutas dentro del código.
+    Defines the command-line arguments required to run the script
+    without manually modifying paths inside the code.
     """
 
     parser = argparse.ArgumentParser(
-        description="Procesamiento reproducible de nube PLY: reducción, DAE, CSV, segmentación de piso/paredes y Convex Hull."
+        description="Reproducible PLY point cloud processing: reduction, DAE, CSV, floor/wall segmentation, and Convex Hull."
     )
 
     parser.add_argument(
         "--input",
         required=True,
-        help="Ruta de entrada de la nube original en formato .ply."
+        help="Input path of the original point cloud in .ply format."
     )
 
     parser.add_argument(
         "--output-dir",
         required=True,
-        help="Carpeta donde se guardarán todos los resultados generados."
+        help="Directory where all generated results will be saved."
     )
 
     parser.add_argument(
         "--prefix",
-        default="nube_procesada",
-        help="Prefijo para nombrar los archivos de salida."
+        default="processed_cloud",
+        help="Prefix used to name output files."
     )
 
     parser.add_argument(
-        "--objetivo-puntos",
+        "--target-points",
         type=int,
         default=100000,
-        help="Número objetivo de puntos después de la reducción por voxelización."
+        help="Target number of points after voxelization-based reduction."
     )
 
     parser.add_argument(
-        "--tolerancia",
+        "--tolerance",
         type=int,
         default=10000,
-        help="Tolerancia permitida respecto al número objetivo de puntos."
+        help="Allowed tolerance with respect to the target number of points."
     )
 
     parser.add_argument(
-        "--voxel-inicial",
+        "--voxel-start",
         type=float,
         default=0.015,
-        help="Tamaño inicial del voxel."
+        help="Initial voxel size."
     )
 
     parser.add_argument(
-        "--voxel-maximo",
+        "--voxel-max",
         type=float,
         default=0.05,
-        help="Tamaño máximo del voxel."
+        help="Maximum voxel size."
     )
 
     parser.add_argument(
-        "--paso",
+        "--voxel-step",
         type=float,
         default=0.001,
-        help="Incremento iterativo del tamaño de voxel."
+        help="Iterative voxel size increment."
     )
 
     parser.add_argument(
         "--cube-size",
         type=float,
         default=0.005,
-        help="Tamaño del cubo utilizado para representar cada punto en DAE."
+        help="Cube size used to represent each point in DAE."
     )
 
     parser.add_argument(
         "--scale",
         type=float,
         default=1.0,
-        help="Factor de escala aplicado a los puntos exportados."
+        help="Scale factor applied to exported points."
     )
 
     parser.add_argument(
         "--ransac-distance",
         type=float,
         default=0.02,
-        help="Umbral de distancia para RANSAC de planos."
+        help="Distance threshold for plane RANSAC."
     )
 
     parser.add_argument(
         "--ransac-iterations",
         type=int,
         default=2500,
-        help="Número máximo de iteraciones de RANSAC."
+        help="Maximum number of RANSAC iterations."
     )
 
     parser.add_argument(
         "--floor-angle-tol",
         type=float,
         default=15.0,
-        help="Tolerancia angular en grados para detectar piso."
+        help="Angular tolerance in degrees for floor detection."
     )
 
     parser.add_argument(
         "--wall-angle-min",
         type=float,
         default=75.0,
-        help="Ángulo mínimo en grados para clasificar paredes."
+        help="Minimum angle in degrees for wall classification."
     )
 
     parser.add_argument(
         "--wall-angle-max",
         type=float,
         default=105.0,
-        help="Ángulo máximo en grados para clasificar paredes."
+        help="Maximum angle in degrees for wall classification."
     )
 
     parser.add_argument(
         "--min-inliers-plane",
         type=int,
         default=800,
-        help="Número mínimo de puntos para aceptar un plano."
+        help="Minimum number of points required to accept a plane."
     )
 
     parser.add_argument(
         "--max-wall-planes",
         type=int,
         default=6,
-        help="Número máximo de planos de pared a detectar."
+        help="Maximum number of wall planes to detect."
     )
 
     parser.add_argument(
         "--random-state",
         type=int,
         default=42,
-        help="Semilla aleatoria para reproducibilidad."
+        help="Random seed for reproducibility."
     )
 
     parser.add_argument(
         "--no-dae",
         action="store_true",
-        help="Si se activa, no exporta archivos DAE. Útil para pruebas rápidas."
+        help="If enabled, DAE files are not exported. Useful for quick tests."
     )
 
     return parser.parse_args()
 
 
 # ============================================================
-# FUNCIÓN PRINCIPAL
+# MAIN FUNCTION
 # ============================================================
 
 def main():
@@ -721,169 +721,169 @@ def main():
 
     prefix = args.prefix
 
-    output_reduced_ply = base_dir / f"{prefix}_reducida.ply"
+    output_reduced_ply = base_dir / f"{prefix}_reduced.ply"
 
-    output_collada_path = base_dir / f"{prefix}_escena.dae"
-    output_csv_path = base_dir / f"{prefix}_puntos.csv"
+    output_collada_path = base_dir / f"{prefix}_scene.dae"
+    output_csv_path = base_dir / f"{prefix}_points.csv"
     output_sphere_collada_path = base_dir / f"{prefix}_robot.dae"
 
     output_floor_dae = base_dir / f"{prefix}_floor.dae"
     output_walls_dae = base_dir / f"{prefix}_walls.dae"
     output_floor_hull_dae = base_dir / f"{prefix}_floor_hull.dae"
 
-    output_metrics_csv = base_dir / f"{prefix}_metricas.csv"
-    output_summary_json = base_dir / f"{prefix}_resumen.json"
-    output_voxel_history_csv = base_dir / f"{prefix}_historial_voxeles.csv"
+    output_metrics_csv = base_dir / f"{prefix}_metrics.csv"
+    output_summary_json = base_dir / f"{prefix}_summary.json"
+    output_voxel_history_csv = base_dir / f"{prefix}_voxel_history.csv"
 
-    objetivo_puntos = args.objetivo_puntos
-    tolerancia = args.tolerancia
-    voxel_inicial = args.voxel_inicial
-    voxel_maximo = args.voxel_maximo
-    paso = args.paso
+    target_points = args.target_points
+    tolerance = args.tolerance
+    voxel_start = args.voxel_start
+    voxel_max = args.voxel_max
+    voxel_step = args.voxel_step
 
     cube_size = args.cube_size
     scal = args.scale
 
-    color_escena = [0.0, 1.0, 0.0, 1.0]
-    color_robot = [1.0, 0.0, 0.0, 1.0]
-    color_floor = [0.2, 0.9, 0.2, 1.0]
-    color_walls = [0.9, 0.2, 0.2, 1.0]
-    color_hull = [0.0, 0.8, 1.0, 1.0]
+    color_scene = [0.0, 1.0, 0.0, 1.0]
+    robot_color = [1.0, 0.0, 0.0, 1.0]
+    floor_color = [0.2, 0.9, 0.2, 1.0]
+    wall_color = [0.9, 0.2, 0.2, 1.0]
+    hull_color = [0.0, 0.8, 1.0, 1.0]
 
-    tiempo_inicio_total = time.perf_counter()
+    total_start_time = time.perf_counter()
 
-    tiempos = {
-        "reduccion": 0.0,
-        "dae_escena": 0.0,
+    timings = {
+        "reduction": 0.0,
+        "dae_scene": 0.0,
         "csv": 0.0,
         "robot": 0.0,
-        "segmentacion": 0.0,
+        "segmentation": 0.0,
         "floor": 0.0,
         "walls": 0.0,
         "hull": 0.0,
         "total": 0.0
     }
 
-    archivos_generados = {
-        "nube_reducida_ply": str(output_reduced_ply),
-        "escena_completa_dae": None if args.no_dae else str(output_collada_path),
-        "csv_puntos": str(output_csv_path),
+    generated_files = {
+        "reduced_point_cloud_ply": str(output_reduced_ply),
+        "full_scene_dae": None if args.no_dae else str(output_collada_path),
+        "csv_points": str(output_csv_path),
         "robot_dae": None if args.no_dae else str(output_sphere_collada_path),
         "floor_dae": None if args.no_dae else str(output_floor_dae),
         "walls_dae": None if args.no_dae else str(output_walls_dae),
         "floor_hull_dae": None if args.no_dae else str(output_floor_hull_dae),
-        "metricas_csv": str(output_metrics_csv),
-        "resumen_json": str(output_summary_json),
-        "historial_voxeles_csv": str(output_voxel_history_csv)
+        "metrics_csv": str(output_metrics_csv),
+        "summary_json": str(output_summary_json),
+        "voxel_history_csv": str(output_voxel_history_csv)
     }
 
     try:
         print("\n========================================")
-        print("PROCESAMIENTO REPRODUCIBLE DE NUBE 3D")
+        print("REPRODUCIBLE 3D POINT CLOUD PROCESSING")
         print("========================================")
 
-        print("\nArchivo de entrada:")
+        print("\nInput file:")
         print(input_ply_path)
 
-        print("\nCarpeta de salida:")
+        print("\nOutput directory:")
         print(base_dir)
 
-        print("\nPrefijo de experimento:")
+        print("\nExperiment prefix:")
         print(prefix)
 
         # ----------------------------
-        # Etapa 1: reducción de nube
+        # Stage 1: point cloud reduction
         # ----------------------------
         print("\n----------------------------------------")
-        print("Etapa 1: reducción de nube por voxelización")
+        print("Stage 1: voxelization-based point cloud reduction")
         print("----------------------------------------")
 
         t0 = time.perf_counter()
 
-        points, metricas_reduccion = reduce_point_cloud_open3d(
+        points, metrics_reduction = iterative_voxel_downsampling(
             input_ply_path=str(input_ply_path),
             output_ply_path=str(output_reduced_ply),
-            objetivo_puntos=objetivo_puntos,
-            tolerancia=tolerancia,
-            voxel_inicial=voxel_inicial,
-            voxel_maximo=voxel_maximo,
-            paso=paso
+            target_points=target_points,
+            tolerance=tolerance,
+            voxel_start=voxel_start,
+            voxel_max=voxel_max,
+            voxel_step=voxel_step
         )
 
-        tiempos["reduccion"] = time.perf_counter() - t0
-        print(f"\n⏱️ Tiempo reducción de nube: {formato_tiempo(tiempos['reduccion'])}")
+        timings["reduction"] = time.perf_counter() - t0
+        print(f"\n⏱️ Point cloud reduction time: {format_time(timings['reduction'])}")
 
-        # Guardar historial de voxelización
-        pd.DataFrame(metricas_reduccion["historial_voxeles"]).to_csv(
+        # Save voxelization history
+        pd.DataFrame(metrics_reduction["voxel_history"]).to_csv(
             output_voxel_history_csv,
             index=False
         )
 
         # ----------------------------
-        # Etapa 2: exportar escena DAE
+        # Stage 2: export scene DAE
         # ----------------------------
         if not args.no_dae:
             print("\n----------------------------------------")
-            print("Etapa 2: exportar escena completa reducida a DAE")
+            print("Stage 2: export reduced full scene to DAE")
             print("----------------------------------------")
 
             t0 = time.perf_counter()
 
-            points_to_collada(
+            export_points_to_collada(
                 points,
                 cube_size,
                 str(output_collada_path),
                 scal,
-                color_escena
+                color_scene
             )
 
-            tiempos["dae_escena"] = time.perf_counter() - t0
-            print(f"⏱️ Tiempo exportación escena DAE: {formato_tiempo(tiempos['dae_escena'])}")
+            timings["dae_scene"] = time.perf_counter() - t0
+            print(f"⏱️ Scene DAE export time: {format_time(timings['dae_scene'])}")
         else:
-            print("\n⏭️ Exportación DAE de escena omitida por --no-dae")
+            print("\n⏭️ Scene DAE export skipped due to --no-dae")
 
         # ----------------------------
-        # Etapa 3: guardar CSV
+        # Stage 3: save CSV
         # ----------------------------
         print("\n----------------------------------------")
-        print("Etapa 3: guardar CSV de nube reducida")
+        print("Stage 3: save reduced point cloud CSV")
         print("----------------------------------------")
 
         t0 = time.perf_counter()
 
-        save_points_to_csv(
+        export_points_to_csv(
             points,
             str(output_csv_path),
             scal
         )
 
-        tiempos["csv"] = time.perf_counter() - t0
-        print(f"⏱️ Tiempo guardado CSV: {formato_tiempo(tiempos['csv'])}")
+        timings["csv"] = time.perf_counter() - t0
+        print(f"⏱️ CSV saving time: {format_time(timings['csv'])}")
 
         # ----------------------------
-        # Etapa 4: exportar robot
+        # Stage 4: export robot
         # ----------------------------
         if not args.no_dae:
             print("\n----------------------------------------")
-            print("Etapa 4: exportar esfera representativa del robot")
+            print("Stage 4: export representative robot sphere")
             print("----------------------------------------")
 
             t0 = time.perf_counter()
 
             sphere = trimesh.creation.icosphere(radius=cube_size * scal)
-            sphere.visual.face_colors = color_robot
+            sphere.visual.face_colors = robot_color
             sphere.export(str(output_sphere_collada_path), file_type="dae")
 
-            tiempos["robot"] = time.perf_counter() - t0
-            print(f"⏱️ Tiempo exportación robot DAE: {formato_tiempo(tiempos['robot'])}")
+            timings["robot"] = time.perf_counter() - t0
+            print(f"⏱️ Robot DAE export time: {format_time(timings['robot'])}")
         else:
-            print("\n⏭️ Exportación DAE del robot omitida por --no-dae")
+            print("\n⏭️ Robot DAE export skipped due to --no-dae")
 
         # ----------------------------
-        # Etapa 5: segmentación
+        # Stage 5: segmentation
         # ----------------------------
         print("\n----------------------------------------")
-        print("Etapa 5: segmentación de piso y paredes")
+        print("Stage 5: floor and wall segmentation")
         print("----------------------------------------")
 
         t0 = time.perf_counter()
@@ -899,46 +899,46 @@ def main():
             random_state=args.random_state
         )
 
-        tiempos["segmentacion"] = time.perf_counter() - t0
-        print(f"⏱️ Tiempo segmentación piso/paredes: {formato_tiempo(tiempos['segmentacion'])}")
+        timings["segmentation"] = time.perf_counter() - t0
+        print(f"⏱️ Floor/wall segmentation time: {format_time(timings['segmentation'])}")
 
         floor_points_count = int(seg["floor_points"].shape[0])
         wall_planes_count = int(len(seg["walls"]))
         wall_points_count = 0
 
         # ----------------------------
-        # Etapa 6: exportar piso
+        # Stage 6: export floor
         # ----------------------------
         print("\n----------------------------------------")
-        print("Etapa 6: exportar piso")
+        print("Stage 6: export floor")
         print("----------------------------------------")
 
         if seg["floor_points"].size > 0:
-            print(f"✅ Puntos de piso detectados: {floor_points_count}")
+            print(f"✅ Detected floor points: {floor_points_count}")
 
             if not args.no_dae:
                 t0 = time.perf_counter()
 
-                points_to_collada(
+                export_points_to_collada(
                     seg["floor_points"],
                     cube_size,
                     str(output_floor_dae),
                     scal,
-                    color_floor
+                    floor_color
                 )
 
-                tiempos["floor"] = time.perf_counter() - t0
-                print(f"⏱️ Tiempo exportación piso DAE: {formato_tiempo(tiempos['floor'])}")
+                timings["floor"] = time.perf_counter() - t0
+                print(f"⏱️ Floor DAE export time: {format_time(timings['floor'])}")
             else:
-                print("⏭️ Exportación DAE de piso omitida por --no-dae")
+                print("⏭️ Floor DAE export skipped due to --no-dae")
         else:
-            print("⚠️ No se detectó piso suficiente.")
+            print("⚠️ Not enough floor points were detected.")
 
         # ----------------------------
-        # Etapa 7: exportar paredes
+        # Stage 7: export walls
         # ----------------------------
         print("\n----------------------------------------")
-        print("Etapa 7: exportar paredes")
+        print("Stage 7: export walls")
         print("----------------------------------------")
 
         if len(seg["walls"]) > 0:
@@ -948,38 +948,38 @@ def main():
 
             wall_points_count = int(all_walls.shape[0])
 
-            print(f"✅ Planos de pared detectados: {wall_planes_count}")
-            print(f"✅ Puntos de paredes detectados: {wall_points_count}")
+            print(f"✅ Detected wall planes: {wall_planes_count}")
+            print(f"✅ Detected wall points: {wall_points_count}")
 
             if not args.no_dae:
                 t0 = time.perf_counter()
 
-                points_to_collada(
+                export_points_to_collada(
                     all_walls,
                     cube_size,
                     str(output_walls_dae),
                     scal,
-                    color_walls
+                    wall_color
                 )
 
-                tiempos["walls"] = time.perf_counter() - t0
-                print(f"⏱️ Tiempo exportación paredes DAE: {formato_tiempo(tiempos['walls'])}")
+                timings["walls"] = time.perf_counter() - t0
+                print(f"⏱️ Wall DAE export time: {format_time(timings['walls'])}")
             else:
-                print("⏭️ Exportación DAE de paredes omitida por --no-dae")
+                print("⏭️ Wall DAE export skipped due to --no-dae")
         else:
-            print("⚠️ No se detectaron paredes suficientes.")
+            print("⚠️ Not enough walls were detected.")
 
         # ----------------------------
-        # Etapa 8: Convex Hull del piso
+        # Stage 8: floor Convex Hull
         # ----------------------------
         print("\n----------------------------------------")
-        print("Etapa 8: Convex Hull del piso")
+        print("Stage 8: floor Convex Hull")
         print("----------------------------------------")
 
-        hull_exportado = False
+        hull_exported = False
 
         if seg["floor_points"].shape[0] >= 3 and seg["floor_normal"] is not None:
-            print("Calculando Convex Hull del piso...")
+            print("Computing floor Convex Hull...")
 
             t0 = time.perf_counter()
 
@@ -992,43 +992,43 @@ def main():
                 hull3d = hull2d_vertices_3d(hull2d, basis)
 
                 if not args.no_dae:
-                    hull_exportado = export_floor_hull_wire(
+                    hull_exported = export_floor_hull_wire(
                         hull3d,
                         str(output_floor_hull_dae),
                         wire_radius=0.01,
-                        color=color_hull
+                        color=hull_color
                     )
 
-                    if hull_exportado:
-                        print("✅ Contorno del piso exportado.")
+                    if hull_exported:
+                        print("✅ Floor contour exported.")
                     else:
-                        print("⚠️ No se pudo exportar el contorno del piso.")
+                        print("⚠️ Unable to export the floor contour.")
                 else:
-                    print("⏭️ Exportación DAE de Convex Hull omitida por --no-dae")
+                    print("⏭️ Convex Hull DAE export skipped due to --no-dae")
             else:
-                print("⚠️ No fue posible calcular el Convex Hull del piso.")
+                print("⚠️ Unable to compute the floor Convex Hull.")
 
-            tiempos["hull"] = time.perf_counter() - t0
-            print(f"⏱️ Tiempo Convex Hull piso: {formato_tiempo(tiempos['hull'])}")
+            timings["hull"] = time.perf_counter() - t0
+            print(f"⏱️ Floor Convex Hull time: {format_time(timings['hull'])}")
         else:
-            print("⚠️ No fue posible calcular el Convex Hull del piso.")
+            print("⚠️ Unable to compute the floor Convex Hull.")
 
         # ============================================================
-        # RESUMEN FINAL
+        # FINAL SUMMARY
         # ============================================================
 
-        tiempos["total"] = time.perf_counter() - tiempo_inicio_total
+        timings["total"] = time.perf_counter() - total_start_time
 
-        resumen = {
+        summary = {
             "input_ply": str(input_ply_path),
             "output_dir": str(base_dir),
             "prefix": prefix,
-            "parametros": {
-                "objetivo_puntos": objetivo_puntos,
-                "tolerancia": tolerancia,
-                "voxel_inicial": voxel_inicial,
-                "voxel_maximo": voxel_maximo,
-                "paso": paso,
+            "parameters": {
+                "target_points": target_points,
+                "tolerance": tolerance,
+                "voxel_start": voxel_start,
+                "voxel_max": voxel_max,
+                "voxel_step": voxel_step,
                 "cube_size": cube_size,
                 "scale": scal,
                 "ransac_distance": args.ransac_distance,
@@ -1041,94 +1041,94 @@ def main():
                 "random_state": args.random_state,
                 "no_dae": args.no_dae
             },
-            "metricas_reduccion": {
-                "puntos_originales": metricas_reduccion["puntos_originales"],
-                "puntos_finales": metricas_reduccion["puntos_finales"],
-                "reduccion_porcentaje": metricas_reduccion["reduccion_porcentaje"],
-                "voxel_optimo": metricas_reduccion["voxel_optimo"],
-                "mejor_error": metricas_reduccion["mejor_error"]
+            "metrics_reduction": {
+                "original_points": metrics_reduction["original_points"],
+                "final_points": metrics_reduction["final_points"],
+                "reduction_percentage": metrics_reduction["reduction_percentage"],
+                "optimal_voxel": metrics_reduction["optimal_voxel"],
+                "best_error": metrics_reduction["best_error"]
             },
-            "metricas_segmentacion": {
-                "puntos_piso": floor_points_count,
-                "planos_pared": wall_planes_count,
-                "puntos_paredes": wall_points_count,
-                "convex_hull_piso_exportado": hull_exportado
+            "segmentation_metrics": {
+                "floor_points": floor_points_count,
+                "wall_planes": wall_planes_count,
+                "wall_points": wall_points_count,
+                "floor_convex_hull_exported": hull_exported
             },
-            "tiempos_segundos": tiempos,
-            "tiempos_formato": {
-                key: formato_tiempo(value) for key, value in tiempos.items()
+            "timings_seconds": timings,
+            "timings_formatted": {
+                key: format_time(value) for key, value in timings.items()
             },
-            "archivos_generados": archivos_generados
+            "generated_files": generated_files
         }
 
-        # Guardar resumen JSON
+        # Save JSON summary
         with open(output_summary_json, "w", encoding="utf-8") as f:
-            json.dump(resumen, f, indent=4, ensure_ascii=False)
+            json.dump(summary, f, indent=4, ensure_ascii=False)
 
-        # Guardar métricas CSV
-        metricas_csv = {
+        # Save CSV metrics
+        metrics_csv = {
             "input_ply": str(input_ply_path),
             "output_dir": str(base_dir),
             "prefix": prefix,
-            "puntos_originales": metricas_reduccion["puntos_originales"],
-            "puntos_finales": metricas_reduccion["puntos_finales"],
-            "reduccion_porcentaje": metricas_reduccion["reduccion_porcentaje"],
-            "voxel_optimo": metricas_reduccion["voxel_optimo"],
-            "objetivo_puntos": objetivo_puntos,
-            "tolerancia": tolerancia,
-            "puntos_piso": floor_points_count,
-            "planos_pared": wall_planes_count,
-            "puntos_paredes": wall_points_count,
-            "tiempo_reduccion_s": tiempos["reduccion"],
-            "tiempo_dae_escena_s": tiempos["dae_escena"],
-            "tiempo_csv_s": tiempos["csv"],
-            "tiempo_robot_s": tiempos["robot"],
-            "tiempo_segmentacion_s": tiempos["segmentacion"],
-            "tiempo_floor_s": tiempos["floor"],
-            "tiempo_walls_s": tiempos["walls"],
-            "tiempo_hull_s": tiempos["hull"],
-            "tiempo_total_s": tiempos["total"]
+            "original_points": metrics_reduction["original_points"],
+            "final_points": metrics_reduction["final_points"],
+            "reduction_percentage": metrics_reduction["reduction_percentage"],
+            "optimal_voxel": metrics_reduction["optimal_voxel"],
+            "target_points": target_points,
+            "tolerance": tolerance,
+            "floor_points": floor_points_count,
+            "wall_planes": wall_planes_count,
+            "wall_points": wall_points_count,
+            "reduction_time_s": timings["reduction"],
+            "scene_dae_time_s": timings["dae_scene"],
+            "csv_time_s": timings["csv"],
+            "robot_time_s": timings["robot"],
+            "segmentation_time_s": timings["segmentation"],
+            "floor_time_s": timings["floor"],
+            "walls_time_s": timings["walls"],
+            "hull_time_s": timings["hull"],
+            "total_time_s": timings["total"]
         }
 
-        pd.DataFrame([metricas_csv]).to_csv(output_metrics_csv, index=False)
+        pd.DataFrame([metrics_csv]).to_csv(output_metrics_csv, index=False)
 
         print("\n========================================")
-        print("✅ PROCESO COMPLETADO")
+        print("✅ PROCESS COMPLETED")
         print("========================================")
 
-        print("\n⏱️ RESUMEN DE TIEMPOS:")
-        print(f"- Reducción de nube:        {formato_tiempo(tiempos['reduccion'])}")
-        print(f"- Escena completa DAE:      {formato_tiempo(tiempos['dae_escena'])}")
-        print(f"- Guardado CSV:             {formato_tiempo(tiempos['csv'])}")
-        print(f"- Robot DAE:                {formato_tiempo(tiempos['robot'])}")
-        print(f"- Segmentación:             {formato_tiempo(tiempos['segmentacion'])}")
-        print(f"- Piso DAE:                 {formato_tiempo(tiempos['floor'])}")
-        print(f"- Paredes DAE:              {formato_tiempo(tiempos['walls'])}")
-        print(f"- Convex Hull piso:         {formato_tiempo(tiempos['hull'])}")
-        print(f"- TIEMPO TOTAL:             {formato_tiempo(tiempos['total'])}")
+        print("\n⏱️ TIME SUMMARY:")
+        print(f"- Point cloud reduction:        {format_time(timings['reduction'])}")
+        print(f"- Full scene DAE:      {format_time(timings['dae_scene'])}")
+        print(f"- CSV saving:             {format_time(timings['csv'])}")
+        print(f"- Robot DAE:                {format_time(timings['robot'])}")
+        print(f"- Segmentation:             {format_time(timings['segmentation'])}")
+        print(f"- Floor DAE:                 {format_time(timings['floor'])}")
+        print(f"- Walls DAE:              {format_time(timings['walls'])}")
+        print(f"- Floor Convex Hull:         {format_time(timings['hull'])}")
+        print(f"- TOTAL TIME:             {format_time(timings['total'])}")
 
-        print("\n📊 MÉTRICAS PRINCIPALES:")
-        print(f"- Puntos originales:        {metricas_reduccion['puntos_originales']}")
-        print(f"- Puntos finales:           {metricas_reduccion['puntos_finales']}")
-        print(f"- Reducción:                {metricas_reduccion['reduccion_porcentaje']:.2f}%")
-        print(f"- Voxel óptimo:             {metricas_reduccion['voxel_optimo']:.3f}")
-        print(f"- Puntos de piso:           {floor_points_count}")
-        print(f"- Planos de pared:          {wall_planes_count}")
-        print(f"- Puntos de paredes:        {wall_points_count}")
+        print("\n📊 MAIN METRICS:")
+        print(f"- Original points:        {metrics_reduction['original_points']}")
+        print(f"- Final points:           {metrics_reduction['final_points']}")
+        print(f"- Reduction:                {metrics_reduction['reduction_percentage']:.2f}%")
+        print(f"- Optimal voxel:             {metrics_reduction['voxel_optimo']:.3f}")
+        print(f"- Floor points:           {floor_points_count}")
+        print(f"- Wall planes:          {wall_planes_count}")
+        print(f"- Wall points:        {wall_points_count}")
 
-        print("\n📁 Archivos generados:")
-        for nombre, ruta in archivos_generados.items():
+        print("\n📁 Generated files:")
+        for nombre, ruta in generated_files.items():
             if ruta is not None:
                 print(f"- {nombre}: {ruta}")
 
     except Exception as e:
-        print("\n❌ ERROR DURANTE EL PROCESAMIENTO")
+        print("\n❌ ERROR DURING PROCESSING")
         print(str(e))
         sys.exit(1)
 
 
 # ============================================================
-# PUNTO DE ENTRADA
+# ENTRY POINT
 # ============================================================
 
 if __name__ == "__main__":

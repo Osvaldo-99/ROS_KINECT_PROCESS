@@ -1,36 +1,38 @@
+```bash
 #!/bin/bash
 
 # ============================================================
-# SCRIPT DE EJECUCIÓN PARA PROCESAMIENTO DE NUBE 3D
-# Repositorio: MAPEO-3D-KINECT-V1-V2
+# 3D POINT CLOUD PROCESSING EXECUTION SCRIPT
+# Repository: ROS_KINECT_PROCESS
 # ============================================================
 
 set -e
 
 echo "========================================"
-echo "PROCESAMIENTO DE NUBE 3D"
+echo "3D POINT CLOUD PROCESSING"
 echo "========================================"
 
-# Ir a la raíz del repositorio, aunque ejecutes el script desde otra carpeta
+# Move to repository root directory
+# even if the script is executed from another location
 cd "$(dirname "$0")/.."
 
-# Activar entorno virtual si existe
+# Activate virtual environment if available
 if [ -d ".venv" ]; then
-    echo "Activando entorno virtual..."
+    echo "Activating virtual environment..."
     source .venv/bin/activate
 fi
 
-# Archivo de entrada
-INPUT_PLY="data/input/nube_original.ply"
+# Input point cloud file
+INPUT_PLY="data/input/original_point_cloud.ply"
 
-# Carpeta de salida
-OUTPUT_DIR="results/experimento_01"
+# Output directory
+OUTPUT_DIR="results/experiment_01"
 
-# Crear carpeta de salida si no existe
+# Create output directory if it does not exist
 mkdir -p "$OUTPUT_DIR"
 
-# Ejecutar procesamiento
-python3 src/Procesar_nube_3d.py \
+# Execute processing pipeline
+python3 src/process_point_cloud.py \
     --input "$INPUT_PLY" \
     --output-dir "$OUTPUT_DIR" \
     --target-points 100000 \
@@ -43,6 +45,7 @@ python3 src/Procesar_nube_3d.py \
     --export-dae
 
 echo "========================================"
-echo "PROCESO FINALIZADO"
-echo "Resultados guardados en: $OUTPUT_DIR"
+echo "PROCESS COMPLETED"
+echo "Results saved to: $OUTPUT_DIR"
 echo "========================================"
+```

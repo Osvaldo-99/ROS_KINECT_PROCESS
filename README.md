@@ -1,143 +1,165 @@
-# MAPEO-3D-KINECT-V1-V2
+# ROS_KINECT_PROCESS
 
 <p align="center">
-  <img src="docs/img/pipeline_general.png" width="900">
+  <img src="docs/img/pipeline_general.png" width="950">
 </p>
 
 <p align="center">
-Sistema de reconstrucción y procesamiento de nubes de puntos 3D utilizando sensores RGB-D Kinect V1/V2, ROS Noetic, RTAB-Map y Open3D.
+3D Point Cloud Reconstruction and Processing Pipeline using Kinect V1/V2 RGB-D Sensors, ROS Noetic, RTAB-Map, and Open3D.
+</p>
+
+<p align="center">
+
+![ROS](https://img.shields.io/badge/ROS-Noetic-blue)
+![Python](https://img.shields.io/badge/Python-3.10-yellow)
+![Open3D](https://img.shields.io/badge/Open3D-PointCloud-green)
+![Ubuntu](https://img.shields.io/badge/Ubuntu-22.04-orange)
+![Status](https://img.shields.io/badge/Status-Research-red)
+
 </p>
 
 ---
 
-# Asesores
+# Advisors
 
-- **Dr. Héctor Vázquez Leal**
-- **Dr. Gerardo Díaz Arango**
+* **Dr. Héctor Vázquez Leal**
+* **Dr. Gerardo Díaz Arango**
 
-# Desarrollador
+# Developer
 
-- **IIE. Osvaldo Elí Ramos Sánchez**
-
----
-
-# Descripción
-
-Repositorio orientado al desarrollo de un sistema de adquisición, reconstrucción y procesamiento tridimensional de entornos indoor utilizando sensores RGB-D Kinect.
-
-El proyecto integra herramientas de robótica, SLAM RGB-D y procesamiento geométrico para generar representaciones espaciales reproducibles orientadas a aplicaciones de:
-
-- robótica móvil,
-- navegación autónoma,
-- simulación,
-- reconstrucción 3D,
-- modelado espacial indoor,
-- análisis geométrico.
+* **B.E. Osvaldo Elí Ramos Sánchez**
 
 ---
 
-# Objetivo
+# Abstract
 
-Documentar, organizar y respaldar el código, configuraciones, scripts, resultados y metodología relacionados con el proceso de:
+This project presents a 3D reconstruction and point cloud processing pipeline based on Kinect V1/V2 RGB-D sensors, ROS Noetic, RTAB-Map, and Open3D. The proposed methodology focuses on indoor robotic mapping, RGB-D SLAM, geometric processing, and computational optimization through iterative voxelization techniques.
 
-1. Captura RGB-D
-2. Reconstrucción tridimensional
-3. Exportación de nube de puntos
-4. Reducción mediante voxelización iterativa
-5. Segmentación geométrica
-6. Extracción de Convex Hull
-7. Exportación de resultados
+The system enables reproducible acquisition and reconstruction of indoor environments while integrating geometric segmentation, Convex Hull extraction, spatial adjustment, and automated exportation of processed results. The proposed pipeline aims to reduce computational cost while preserving the essential geometric structure of the reconstructed environment.
+
+The repository is oriented toward robotics, autonomous navigation, robotic simulation, spatial modeling, and experimental research in 3D mapping systems.
 
 ---
 
-# Arquitectura general del sistema
+# Overview
+
+This repository focuses on the development of a complete acquisition, reconstruction, and post-processing framework for indoor 3D mapping using Kinect RGB-D sensors.
+
+The project integrates robotics, RGB-D SLAM, and geometric processing tools to generate reproducible spatial representations suitable for:
+
+* mobile robotics,
+* autonomous navigation,
+* robotic simulation,
+* indoor 3D reconstruction,
+* spatial modeling,
+* geometric analysis,
+* robotic environment representation.
+
+---
+
+# Main Objective
+
+To document, organize, and support the code, configurations, scripts, methodologies, and experimental results related to:
+
+1. RGB-D acquisition
+2. 3D reconstruction
+3. Point cloud exportation
+4. Iterative voxelization-based downsampling
+5. Geometric segmentation
+6. Convex Hull extraction
+7. Automated result exportation
+
+---
+
+# System Architecture
 
 ```text
-Kinect RGB-D
-      │
-      ▼
+Kinect RGB-D Sensor
+        │
+        ▼
 ROS Noetic
-      │
-      ▼
+        │
+        ▼
 RTAB-Map
-      │
-      ▼
-Nube de puntos PLY
-      │
-      ▼
-Postprocesamiento Open3D
-      │
-      ├── Voxelización iterativa
-      ├── Ajuste espacial
-      ├── Segmentación piso/paredes
-      ├── Convex Hull
-      └── Exportación
-              │
-              ├── PLY
-              ├── CSV
-              ├── DAE
-              ├── TXT
-              └── JSON
+        │
+        ▼
+PLY Point Cloud
+        │
+        ▼
+Open3D Post-Processing
+        │
+        ├── Iterative voxelization
+        ├── Spatial adjustment
+        ├── Floor/wall segmentation
+        ├── Convex Hull extraction
+        └── Result exportation
+                │
+                ├── PLY
+                ├── CSV
+                ├── DAE
+                ├── TXT
+                └── JSON
 ```
 
 ---
 
-# Pipeline metodológico
+# Methodological Pipeline
 
-1. Captura RGB-D mediante Kinect.
-2. Reconstrucción 3D utilizando RTAB-Map.
-3. Exportación de nube de puntos `.ply`.
-4. Reducción mediante voxelización iterativa.
-5. Ajuste espacial para simulación.
-6. Segmentación geométrica basada en RANSAC.
-7. Extracción de Convex Hull del piso.
-8. Exportación automática de resultados.
-
----
-
-# Tecnologías utilizadas
-
-## Sistemas operativos
-
-- Ubuntu 20.04
-- Ubuntu 22.04
-
-## Frameworks y herramientas
-
-- ROS Noetic
-- RTAB-Map
-- Open3D
-- CloudCompare
-- CoppeliaSim
-
-## Sensores
-
-- Kinect V1
-- Kinect V2
-
-## Lenguajes
-
-- Python
-- Bash
+1. RGB-D acquisition using Kinect sensors.
+2. 3D reconstruction using RTAB-Map.
+3. Exportation of `.ply` point clouds.
+4. Iterative voxelization-based reduction.
+5. Spatial scaling and adjustment.
+6. Geometric segmentation using RANSAC.
+7. Convex Hull extraction from segmented floor regions.
+8. Automated exportation of processed results.
 
 ---
 
-# Características principales
+# Technologies Used
 
-- Procesamiento reproducible de nubes de puntos
-- Reducción iterativa mediante voxelización
-- Segmentación automática de piso y paredes
-- Extracción geométrica mediante Convex Hull
-- Exportación `.ply`, `.csv`, `.dae`
-- Compatibilidad con simulación robótica
-- Generación automática de tickets `.txt`
-- Exportación de métricas `.json`
+## Operating Systems
+
+* Ubuntu 20.04
+* Ubuntu 22.04
+
+## Frameworks and Tools
+
+* ROS Noetic
+* RTAB-Map
+* Open3D
+* CloudCompare
+* CoppeliaSim
+
+## RGB-D Sensors
+
+* Kinect V1
+* Kinect V2
+
+## Programming Languages
+
+* Python
+* Bash
 
 ---
 
-# Resultados visuales
+# Main Features
 
-## Pipeline general
+* Reproducible point cloud processing
+* Iterative voxelization-based downsampling
+* Automatic floor and wall segmentation
+* Convex Hull extraction
+* `.ply`, `.csv`, `.dae`, `.json` exportation
+* Robotic simulation compatibility
+* Automated processing ticket generation
+* Experimental metric exportation
+* Modular processing pipeline
+
+---
+
+# Visual Results
+
+## General Pipeline
 
 <p align="center">
   <img src="docs/img/pipeline_general.png" width="950">
@@ -145,78 +167,79 @@ Postprocesamiento Open3D
 
 ---
 
-## Nube de puntos original
+## Original Point Cloud
 
 <p align="center">
-  <img src="docs/img/nube_original.png" width="850">
+  <img src="docs/img/original_point_cloud.png" width="850">
 </p>
 
-Nube de puntos original obtenida mediante RTAB-Map utilizando Kinect RGB-D.
+Point cloud generated using RTAB-Map and Kinect RGB-D acquisition.
 
 ---
 
-## Nube reducida mediante voxelización iterativa
+## Reduced Point Cloud
 
 <p align="center">
-  <img src="docs/img/nube_reducida.png" width="850">
+  <img src="docs/img/reduced_point_cloud.png" width="850">
 </p>
 
-Resultado del proceso de reducción de densidad mediante voxelización iterativa controlada.
+Result obtained after iterative voxelization-based point cloud reduction.
 
 ---
 
-## Segmentación geométrica
+## Geometric Segmentation
 
 <p align="center">
-  <img src="docs/img/segmentacion.png" width="850">
+  <img src="docs/img/segmentation.png" width="850">
 </p>
 
-Separación geométrica de planos estructurales mediante segmentación basada en RANSAC.
+Geometric plane segmentation using RANSAC-based processing.
 
-La segmentación permite identificar:
+The segmentation process enables identification of:
 
-- piso,
-- paredes,
-- regiones no segmentadas.
+* floor regions,
+* wall structures,
+* non-segmented regions.
 
 ---
 
-## Convex Hull del piso
+## Convex Hull Extraction
 
 <p align="center">
   <img src="docs/img/convex_hull.png" width="850">
 </p>
 
-Contorno geométrico generado a partir de los puntos segmentados como piso utilizando Convex Hull proyectado sobre el plano detectado.
+Geometric contour generated from segmented floor points using Convex Hull projection.
 
 ---
 
-## Ticket de procesamiento
+## Processing Ticket
 
 <p align="center">
-  <img src="docs/img/ticket_procesamiento.png" width="950">
+  <img src="docs/img/processing_ticket.png" width="950">
 </p>
 
-Resumen automático de métricas, tiempos, reducción de puntos y resultados de segmentación generados por el pipeline.
+Automatically generated summary including metrics, execution times, point reduction statistics, and segmentation results.
 
 ---
 
-# Aplicaciones
+# Applications
 
-- Robótica móvil
-- Navegación autónoma
-- Reconstrucción 3D indoor
-- SLAM RGB-D
-- Simulación robótica
-- Modelado espacial
-- Planeación geométrica
+* Mobile robotics
+* Autonomous navigation
+* Indoor 3D reconstruction
+* RGB-D SLAM
+* Robotic simulation
+* Spatial modeling
+* Geometric planning
+* Experimental robotic mapping
 
 ---
 
-# Estructura del repositorio
+# Repository Structure
 
 ```text
-MAPEO-3D-KINECT-V1-V2/
+ROS_KINECT_PROCESS/
 │
 ├── docs/
 │   └── img/
@@ -251,17 +274,19 @@ MAPEO-3D-KINECT-V1-V2/
 
 ---
 
-# Instalación
+# Installation
 
-## Clonar repositorio
+## Clone Repository
 
 ```bash
-git clone https://github.com/TU_USUARIO/MAPEO-3D-KINECT-V1-V2.git
+git clone git@github.com:Osvaldo-99/ROS_KINECT_PROCESS.git
 
-cd MAPEO-3D-KINECT-V1-V2
+cd ROS_KINECT_PROCESS
 ```
 
-## Crear entorno virtual
+---
+
+## Create Virtual Environment
 
 ```bash
 python3 -m venv .venv
@@ -269,7 +294,9 @@ python3 -m venv .venv
 source .venv/bin/activate
 ```
 
-## Instalar dependencias
+---
+
+## Install Dependencies
 
 ```bash
 pip install -r requirements.txt
@@ -277,7 +304,7 @@ pip install -r requirements.txt
 
 ---
 
-# Dependencias principales
+# Main Dependencies
 
 ```text
 numpy
@@ -289,14 +316,12 @@ trimesh
 
 ---
 
-# Ejecución
-
-## Ejemplo de procesamiento
+# Execution Example
 
 ```bash
-python3 src/Procesar_nube_3d.py \
-  --input data/input/nube_original.ply \
-  --output-dir results/experimento_01 \
+python3 src/process_point_cloud.py \
+  --input data/input/original_cloud.ply \
+  --output-dir results/experiment_01 \
   --target-points 100000 \
   --tolerance 10000 \
   --voxel-start 0.015 \
@@ -308,72 +333,72 @@ python3 src/Procesar_nube_3d.py \
 
 ---
 
-# Exportación DAE
+# DAE Exportation
 
 ```bash
-python3 src/Procesar_nube_3d.py \
-  --input data/input/nube_original.ply \
-  --output-dir results/experimento_01 \
+python3 src/process_point_cloud.py \
+  --input data/input/original_cloud.ply \
+  --output-dir results/experiment_01 \
   --export-dae
 ```
 
 ---
 
-# Resultados generados
+# Generated Results
 
-El pipeline genera automáticamente:
+The processing pipeline automatically generates:
 
-- Nube reducida `.ply`
-- Datos tabulares `.csv`
-- Modelos `.dae`
-- Ticket de procesamiento `.txt`
-- Métricas `.json`
-- Logs de ejecución
-
----
-
-# Compatibilidad
-
-## ROS
-
-- ROS Noetic
-
-## Sensores compatibles
-
-- Kinect V1
-- Kinect V2
-
-## Formatos soportados
-
-- `.ply`
-- `.csv`
-- `.dae`
-- `.json`
-- `.txt`
+* Reduced point cloud `.ply`
+* Tabular data `.csv`
+* `.dae` geometric models
+* Processing tickets `.txt`
+* Experimental metrics `.json`
+* Execution logs
 
 ---
 
-# Metodología reproducible
+# Compatibility
 
-Este repositorio fue estructurado para permitir:
+## ROS Distribution
 
-- reproducibilidad experimental,
-- trazabilidad de resultados,
-- automatización del procesamiento,
-- documentación de parámetros,
-- organización modular del pipeline.
+* ROS Noetic
+
+## Supported Sensors
+
+* Kinect V1
+* Kinect V2
+
+## Supported Formats
+
+* `.ply`
+* `.csv`
+* `.dae`
+* `.json`
+* `.txt`
 
 ---
 
-# Documentación adicional
+# Reproducible Methodology
 
-Consultar:
+This repository was structured to support:
+
+* experimental reproducibility,
+* result traceability,
+* automated processing,
+* parameter documentation,
+* modular pipeline organization.
+
+---
+
+# Additional Documentation
+
+See:
 
 ```text
 docs/
 ```
 
-y:
+and:
 
 ```text
 ros_dependencies.md
@@ -381,18 +406,31 @@ ros_dependencies.md
 
 ---
 
-# Licencia
+# Research Scope
 
-Proyecto académico y de investigación.
+This repository is intended for:
+
+* robotics experimentation,
+* RGB-D SLAM research,
+* indoor mapping systems,
+* geometric processing research,
+* robotic simulation environments,
+* point cloud optimization studies.
 
 ---
 
-# Citación
+# Citation
 
-Si utilizas este repositorio para investigación académica, favor de citar el trabajo correspondiente.
+If you use this repository for academic or research purposes, please cite the corresponding work.
 
 ---
 
-# Estado del proyecto
+# License
 
-🚧 Proyecto en desarrollo orientado a investigación y experimentación en mapeo 3D indoor mediante sensores RGB-D.
+Academic and research-oriented project.
+
+---
+
+# Project Status
+
+🚧 Active research and development project focused on indoor 3D mapping using RGB-D sensors, ROS Noetic, RTAB-Map, and Open3D.
